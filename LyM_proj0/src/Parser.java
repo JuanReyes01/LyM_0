@@ -28,7 +28,7 @@ public class Parser {
 				for (int i = 0; i < linea.length; i++) {
 					linea[i] = linea[i].trim();
 				}
-				if ( linea.length > 0 && !linea[0].equals("\\n") && !linea[0].equals("")) {
+				if ( linea.length > 0 && !linea[0].equals("")) {
 					if ( linea[0].startsWith("(") ) {
 						linea[0] = linea[0].substring(1);
 						checkLine(linea, "", "(");
