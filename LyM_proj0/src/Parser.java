@@ -11,6 +11,9 @@ public class Parser {
 	private ArrayList<String> funcList;
 	//Array de llaves
 	private String blocks;
+	//Funciones a revisar
+	private String function;
+	
 
 
 	public Parser() {
@@ -38,11 +41,11 @@ public class Parser {
 						//Se busca el BLOCK al lado del [
 						linea[0] = linea[0].substring(1);
 						blocks+="(";
-						checkLine(linea, "");
+						checkLine(linea);
 					}
 
 					else {
-						checkLine(linea, "");
+						checkLine(linea);
 					}
 				}
 				lectura = f.readLine();
@@ -54,39 +57,39 @@ public class Parser {
 		}
 	}
 
-	public void checkLine(String[] linea, String function) throws Exception {
+	public void checkLine(String[] linea) throws Exception {
 		if(linea.length!=0){
 			checkEnd(linea);
 			switch (linea[0]) {
 			case "MOVE":
-				parseN(linea, function);
+				parseN(linea);
 				break;
 			case "RIGHT":
-				parseN(linea, function);
+				parseN(linea);
 				break;
 			case "LEFT":
-				parseN(linea, function);
+				parseN(linea);
 				break;
 			case "ROTATE":
-				parseN(linea, function);
+				parseN(linea);
 				break;
 			case "LOOK":
 				parseLook(linea);
 				break;
 			case "DROP":
-				parseN(linea, function);
+				parseN(linea);
 				break;
 			case "FREE":
-				parseN(linea, function);
+				parseN(linea);
 				break;
 			case "PICK":
-				parseN(linea, function);
+				parseN(linea);
 				break;
 			case "POP":
-				parseN(linea, function);
+				parseN(linea);
 				break;
 			case "CHECK":
-				parseCheck(linea, function);
+				parseCheck(linea);
 				break;
 			case "BLOCKEDP":
 				if (linea.length > 2)
@@ -97,22 +100,75 @@ public class Parser {
 				break;
 
 			case "BLOCK":
-				parseBlock(linea, function, blocks);
+				parseBlock(linea, blocks);
 
 				break;
 			case "REPEAT":
-				parseRepeat(linea, function);
+				parseRepeat(linea);
 
 				break;
 			case "IF":
-				parseIf(linea, function);
+				parseIf(linea);
 				break;
 
 			case "DEFINE":
 				parseDefine(linea);
 				break;
 			case "TO":
-				
+				String fnc = "";
+				//El nombre del metodo no existe 
+				int j = 0;
+				if(!funcList.contains(linea[1])&&linea[1].matches("\\d.*")){
+					fnc+= linea[1];
+					//Si hay parametros
+					if(linea.length>3){
+						//Revisa los parametros
+						boolean hayOutput = false;
+						for(int i=2; i<linea.length&&!hayOutput;i++){
+							if(linea[i].startsWith(":")){
+								if(linea[i].length()<2){
+									i++;
+									if(varList.contains(linea[i].substring(1))){
+										throw new Exception("La variable ya existe");
+									}
+									else fnc=":"+linea[i];
+								}
+								else if(varList.contains(linea[i].substring(1))){
+									throw new Exception("La variable ya existe");
+								}
+								else fnc+=linea[i];
+								
+							}
+							if(linea[i].equals("OUTPUT")){
+								hayOutput = true;
+							}
+						j = i;
+						}
+						if(hayOutput){
+						j++;
+						String[] linea2 = Arrays.copyOfRange(linea,j,linea.length-1);
+						checkLine(linea2);
+						fnc+="1";
+						}
+						else fnc+="0";
+						function = fnc;
+					}
+				}
+				else throw new Exception("El nombre de la funcion no es valido");
+				break;
+			case "OUTPUT":
+				if(function.endsWith("0")){
+					if(linea.length>1){
+					String[] linea2 = Arrays.copyOfRange(linea,1,linea.length-1);
+					checkLine(linea2);
+					}
+				}
+				else throw new Exception("Ya se inicializo el OUTPUT");
+				break;
+			case "END":
+				if(function.length()>0){
+					funcList.add(function);
+				}
 				break;
 			case "":
 
@@ -138,7 +194,7 @@ public class Parser {
 		}
 	}
 
-	public void parseN(String[] linea, String function) throws Exception {
+	public void parseN(String[] linea) throws Exception {
 		// No hay mas datos para analizar
 		if (linea.length < 2)
 			throw new Exception("No hay mas datos en la linea del codigo");
@@ -170,7 +226,7 @@ public class Parser {
 			throw new Exception("No deberia haber mas valores");
 	}
 
-	public void parseCheck(String[] linea, String function) throws Exception {
+	public void parseCheck(String[] linea) throws Exception {
 		int i = 0;
 		// No hay mas datos para analizar
 		if (3 > linea.length)
@@ -215,14 +271,14 @@ public class Parser {
 		varList.add(linea[1]);
 	}
 
-	public void parseBlock(String[] linea, String function, String blocks) throws Exception{
+	public void parseBlock(String[] linea, String blocks) throws Exception{
 		String[] linea2 = new String[linea.length-1];
 		for(int i=0; i<linea.length; i++){
 			if(linea.length!=1&&i+1<=linea.length-1){
 				linea2[i] = linea[i+1];
 			}					
 		}
-		checkLine(linea2, function);
+		checkLine(linea2);
 	}
 
 	/**
@@ -232,7 +288,7 @@ public class Parser {
 	 */
 
 	public void checkEnd(String[] linea)throws Exception{
-
+		
 		//Si en la ultima palabra la ultima letra es ]
 		if(linea[linea.length-1].charAt(linea[linea.length-1].length()-1)==']'){
 			//check si la lista no esta vacia
@@ -270,8 +326,9 @@ public class Parser {
 		}
 
 	}
+	
 
-	public void parseRepeat(String[] linea, String function)throws Exception{
+	public void parseRepeat(String[] linea)throws Exception{
 		// No hay mas datos para analizar
 		if (!function.equals("") && linea[1].startsWith(":") && !function.contains(linea[1]))
 			throw new Exception("El parametro no se encuentra definido en la funcion");
@@ -293,20 +350,20 @@ public class Parser {
 						linea2[i] = linea[i+1];
 					}					
 				}
-				checkLine(linea2, function);
+				checkLine(linea2);
 			}
 		}
 		else throw new Exception("No se inicializa la repeticion");
 	}
-	
-	public void parseIf(String[] linea, String function) throws Exception{
+
+	public void parseIf(String[] linea) throws Exception{
 		//Si hay un not
 		int i = 1;
 		if(linea[i].equals("!")){
 			i++;
 		}
 		else if(linea[i].contains("!")){
-			linea[i] = linea[i].substring(1,linea.length);
+			linea[i] = linea[i].substring(1,linea.length).trim();
 		}
 
 		//TODO Este condicional tiene que confirmar si el elemento es booleano
@@ -323,9 +380,10 @@ public class Parser {
 							linea3[j] = linea[j+3];
 						}					
 					}
-					checkLine(linea3, function);
+					checkLine(linea3);
 				} 
 			}
+			else throw new Exception("No se inicializa la llave");
 		}
 	}
 

@@ -5,6 +5,7 @@ LEFT 90
 DEFINE n 1
 MOVE n
 NOP
+
 (BLOCK
 DEFINE x 6
 REPEAT x [ 
