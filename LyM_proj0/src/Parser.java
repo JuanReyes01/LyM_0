@@ -13,6 +13,8 @@ public class Parser {
 	private String blocks;
 	//Funciones a revisar
 	private String function;
+	//no se puede usar define
+	private boolean noDefine;
 	
 
 
@@ -20,6 +22,8 @@ public class Parser {
 		varList = new ArrayList<String>();
 		funcList = new ArrayList<String>();
 		blocks = "";
+		function = "";
+		noDefine = false;
 	}
 
 	/**
@@ -29,13 +33,14 @@ public class Parser {
 	public void leer(String dir) throws Exception {
 		try (BufferedReader f = new BufferedReader(new FileReader(dir))) {
 			String lectura = f.readLine();
+			
 			while (lectura != null) {
 				lectura = lectura.replaceAll(" +", " ");
 				String[] linea = lectura.split(" ");
 				// Recorrido de cada linea de codigo
 				for (int i = 0; i < linea.length; i++) {
 					linea[i] = linea[i].trim();
-				}
+				}			
 				if ( linea.length > 0 && !linea[0].equals("")) {
 					if ( linea[0].startsWith("(") ) {
 						//Se busca el BLOCK al lado del [
@@ -59,7 +64,8 @@ public class Parser {
 
 	public void checkLine(String[] linea) throws Exception {
 		if(linea.length!=0){
-			checkEnd(linea);
+			linea = checkEnd(linea);
+			if(linea.length!=0){
 			switch (linea[0]) {
 			case "MOVE":
 				parseN(linea);
@@ -112,13 +118,14 @@ public class Parser {
 				break;
 
 			case "DEFINE":
+				if(noDefine) throw new Exception("No se debe utilizar Define");
 				parseDefine(linea);
 				break;
 			case "TO":
 				String fnc = "";
 				//El nombre del metodo no existe 
-				int j = 0;
-				if(!funcList.contains(linea[1])&&linea[1].matches("\\d.*")){
+				int j = 0;				
+				if(!funcList.contains(linea[1])&&!linea[1].matches("\\d.*")){
 					fnc+= linea[1];
 					//Si hay parametros
 					if(linea.length>3){
@@ -147,35 +154,57 @@ public class Parser {
 						if(hayOutput){
 						j++;
 						String[] linea2 = Arrays.copyOfRange(linea,j,linea.length-1);
+						//function = function.substring(0, linea.length-1);
+						funcList.add(function.substring(0, function.length()-1));
+						noDefine = true;
 						checkLine(linea2);
 						fnc+="1";
 						}
 						else fnc+="0";
-						function = fnc;
 					}
+					else fnc+="0";
+					function = fnc;
 				}
 				else throw new Exception("El nombre de la funcion no es valido");
 				break;
 			case "OUTPUT":
 				if(function.endsWith("0")){
+					//function = function.substring(0, function.length()-1);
+					funcList.add(function.substring(0, function.length()-1));
 					if(linea.length>1){
-					String[] linea2 = Arrays.copyOfRange(linea,1,linea.length-1);
+					String[] linea2 = Arrays.copyOfRange(linea,1,linea.length);
+					noDefine = true;
 					checkLine(linea2);
+					noDefine = false;
 					}
 				}
 				else throw new Exception("Ya se inicializo el OUTPUT");
 				break;
 			case "END":
-				if(function.length()>0){
-					funcList.add(function);
+				if(!(function.length()>0)){
+					
+					throw new Exception("No hay una funcion que terminar");
 				}
 				break;
 			case "":
 
 				break;
 			default:
-				throw new Exception("Cadena inesperada:"+linea[0]);
+				boolean esta = false;				
+				for(int i=0;i<funcList.size()&&!false;i++){
+					String[] var = funcList.get(i).split(":");
+					if(var[0].equals(linea[0])){
+						esta = true;
+						if(!(var.length==linea.length)){
+							throw new Exception("No se estan ingresando todos los parametros");
+						}
+					}
+					
+				}
+				if(!esta)throw new Exception("Cadena inesperada:"+linea[0]);
+				
 			}
+		}
 		}
 	}
 
@@ -198,16 +227,26 @@ public class Parser {
 		// No hay mas datos para analizar
 		if (linea.length < 2)
 			throw new Exception("No hay mas datos en la linea del codigo");
-		if (!function.equals("") && linea[1].startsWith(":") && !function.contains(linea[1]))
+		
+		String[] f = function.substring(0, function.length()-1).split(":");
+		boolean esta = false;
+		for(int i=0;i<f.length&&!esta;i++){
+			if(f[i].equals(linea[1].substring(1)))
+				esta = true;
+		}
+		
+		if (!function.equals("") && linea[1].startsWith(":")&&!esta)
 			throw new Exception("El parámetro no se encuentra definido en la funcion");
 		// Si es un numero
 		if (!isNumeric(linea[1])) {
 			// Si la variable existe
-			if (!varList.contains(linea[1]))
+			if (!varList.contains(linea[1])&&!esta)
 				throw new Exception("La variable no es valida o no existe");
 		}
 		// Verificar si hay otro dato
-		if (linea.length > 2)
+		
+		
+		else if (linea.length > 2)
 			throw new Exception("No deberia haber otro dato despues del parametro");
 	}
 
@@ -278,7 +317,9 @@ public class Parser {
 				linea2[i] = linea[i+1];
 			}					
 		}
+		noDefine= true;
 		checkLine(linea2);
+		noDefine= false;
 	}
 
 	/**
@@ -287,17 +328,19 @@ public class Parser {
 	 * @throws Exception
 	 */
 
-	public void checkEnd(String[] linea)throws Exception{
+	public String[] checkEnd(String[] linea)throws Exception{
 		
 		//Si en la ultima palabra la ultima letra es ]
-		if(linea[linea.length-1].charAt(linea[linea.length-1].length()-1)==']'){
+		if(!linea[0].equals("")&&linea[linea.length-1].charAt(linea[linea.length-1].length()-1)==']'){
 			//check si la lista no esta vacia
 			if(!blocks.isEmpty()){
 				//check si hay un [ en el ultimo char de blocks 
 				if(blocks.charAt(blocks.length()-1)=='['){
 					//Si existe se elimina de la lista
 					blocks = blocks.substring(0, blocks.length()-1);
-					linea[linea.length-1] = linea[linea.length-1].replace("]", ""); 
+					String[] linea2 = Arrays.copyOfRange(linea,0,linea.length-1);
+					return linea2;
+					//linea[linea.length-1] = linea[linea.length-1].replace("]", ""); 
 				}
 				else {
 					throw new Exception("Se intento cerrar las llaves en desorden: ]");
@@ -307,14 +350,16 @@ public class Parser {
 				throw new Exception("Llave que se intenta cerrar no esta inicalizada: ]");
 			}
 		}
-		else if(linea[linea.length-1].charAt(linea[linea.length-1].length()-1)==')'){
+		else if(!linea[0].equals("")&&linea[linea.length-1].charAt(linea[linea.length-1].length()-1)==')'){
 			//check si la lista no esta vacia
 			if(!blocks.isEmpty()){
 				//check si hay un [ en el ultimo char de blocks 
 				if(blocks.charAt(blocks.length()-1)=='('){
 					//Si existe se elimina de la lista
 					blocks = blocks.substring(0, blocks.length()-1);
-					linea[linea.length-1] = linea[linea.length-1].replace(")", ""); 
+					String[] linea2 = Arrays.copyOfRange(linea,0,linea.length-1);
+					return linea2;
+					//linea[linea.length-1] = linea[linea.length-1].replace(")", ""); 
 				}
 				else {
 					throw new Exception("Se intento cerrar las llaves en desorden: )");
@@ -324,6 +369,7 @@ public class Parser {
 				throw new Exception("Llave que se intenta cerrar no esta inicalizada: )");
 			}
 		}
+		return linea;
 
 	}
 	
@@ -350,7 +396,9 @@ public class Parser {
 						linea2[i] = linea[i+1];
 					}					
 				}
+				noDefine= true;
 				checkLine(linea2);
+				noDefine= false;
 			}
 		}
 		else throw new Exception("No se inicializa la repeticion");
@@ -365,13 +413,14 @@ public class Parser {
 		else if(linea[i].contains("!")){
 			linea[i] = linea[i].substring(1,linea.length).trim();
 		}
-
+		
 		//TODO Este condicional tiene que confirmar si el elemento es booleano
 		if(true){
 			i++;
 			//Se abre la llave
 			if(linea[i].equals("[")){
 				blocks+="[";
+				
 				String[] linea3 = new String[linea.length-3];
 				//Si la linea tiene mas instrucciones crea una sublista
 				if(3<linea.length){
@@ -380,7 +429,10 @@ public class Parser {
 							linea3[j] = linea[j+3];
 						}					
 					}
+					if(linea3[0]==null) linea3[0]="";
+					noDefine = true;
 					checkLine(linea3);
+					noDefine= false;
 				} 
 			}
 			else throw new Exception("No se inicializa la llave");
