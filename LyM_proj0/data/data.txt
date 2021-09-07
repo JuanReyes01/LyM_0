@@ -1,7 +1,23 @@
-TO goEnd
+ROTATE 3
+IF BLOCKEDP [ MOVE 1
+NOP]
+( BLOCK
+IF BLOCKEDP [ MOVE 1
+NOP]
+LEFT 90
+)
+DEFINE one 1
+TO foo :c :p
+OUTPUT
+DROP :c
+FREE :p
+MOVE one
+END
+foo 1 3
+TO goend
 OUTPUT IF ! BLOCKEDP [
 ( BLOCK MOVE 1
-goEnd )
+goend )
 NOP
 ]
 END
